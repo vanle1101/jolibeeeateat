@@ -363,9 +363,17 @@ function parseBulkInput(raw) {
   } catch (error) {
     if (error instanceof SyntaxError) {
       const accounts = text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !line.startsWith("#")).map((line) => {
-        const fields = line.includes("|") ? line.split("|") : line.split(",");
-        const [email, password, recoveryEmail, totpSecret, proxyLabel] = fields.map((field) => field.trim());
+        const fields = (line.includes("|") ? line.split("|") : line.split(",")).map((field) => field.trim());
+        let [email, password, recoveryEmail, totpSecret, proxyLabel] = fields;
         if (!email || !email.includes("@")) throw new Error(`Email không hợp lệ: ${email}`);
+
+        // Tự động nhận diện định dạng Hotmail Token (email|pass|refreshToken|clientId|recoveryEmail)
+        if (fields.length === 5 && (fields[2]?.startsWith("M.") || fields[2]?.length > 40) && fields[4]?.includes("@")) {
+          recoveryEmail = fields[4];
+          totpSecret = undefined;
+          proxyLabel = undefined;
+        }
+
         return { email: email.toLowerCase(), password, recoveryEmail, totpSecret, proxyLabel, useProxy: Boolean(proxyLabel) };
       });
       if (!accounts.length) throw new Error("Không tìm thấy account hợp lệ.");
