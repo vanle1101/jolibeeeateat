@@ -207,6 +207,16 @@ function parsePipeRows(content) {
         if (!email) throw new Error(`Import row ${lineIndex + 1} is missing email.`)
         if (!password) throw new Error(`Import row ${lineIndex + 1} is missing password.`)
 
+        // Hotmail token format: email|password|refreshToken|clientId|recoveryEmail
+        if (parts.length === 5 && (proxyValue.startsWith('M.') || proxyValue.length > 40) && parts[4].includes('@')) {
+            records.push({
+                email,
+                password,
+                recovery_email: parts[4]
+            })
+            continue
+        }
+
         const proxy = parsePipeProxy(proxyValue, lineIndex + 1)
         if (proxyValue && (proxyUsername || proxyPassword)) {
             proxy.proxy_username = proxyUsername
