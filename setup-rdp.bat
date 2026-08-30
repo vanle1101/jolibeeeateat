@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ===================================================
-echo   AUTO SETUP & RUN MICROSOFT REWARDS SCRIPT (RDP)
+echo   AUTO SETUP AND RUN MICROSOFT REWARDS SCRIPT (RDP)
 echo ===================================================
 echo.
 
@@ -57,7 +57,7 @@ call npm run build
 echo [*] 5/5. Kiem tra tai khoan...
 if exist "accounts.local.txt" (
     echo [*] Dang tu dong import tai khoan tu accounts.local.txt...
-    call npm run accounts:import -- ./accounts.local.txt
+    call npm run accounts:import -- ./accounts.local.txt --no-proxy 2>nul || call npm run accounts:import -- ./accounts.local.txt
 )
 
 echo.

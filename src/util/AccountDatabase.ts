@@ -177,7 +177,7 @@ export function loadAccountsFromDatabase(projectRoot: string): Account[] | null 
                     .all() as unknown as AccountRow[]
         )
 
-        return rows.map(row => ({
+        return rows.map((row: AccountRow) => ({
             accountId: row.account_id,
             proxyId: row.proxy_id,
             useProxy: Boolean(row.use_proxy),

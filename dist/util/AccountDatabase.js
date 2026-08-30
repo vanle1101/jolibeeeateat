@@ -131,7 +131,7 @@ function loadAccountsFromDatabase(projectRoot) {
                 ORDER BY COALESCE(a.slot, 2147483647), a.email
                 `)
             .all());
-        return rows.map(row => ({
+        return rows.map((row) => ({
             accountId: row.account_id,
             proxyId: row.proxy_id,
             useProxy: Boolean(row.use_proxy),
