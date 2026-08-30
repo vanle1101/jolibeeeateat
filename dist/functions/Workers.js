@@ -43,9 +43,7 @@ class Workers {
         const dailySets = data.dashboard.dailySetPromotions ?? {};
         const todayIso = dateKey(todayKey);
         const todayData = dailySets[todayKey] ??
-            (todayIso
-                ? Object.entries(dailySets).find(([key]) => dateKey(key) === todayIso)?.[1]
-                : undefined);
+            (todayIso ? Object.entries(dailySets).find(([key]) => dateKey(key) === todayIso)?.[1] : undefined);
         const activitiesUncompleted = todayData?.filter(x => {
             if (x?.complete)
                 return false;
@@ -137,6 +135,10 @@ class Workers {
             : 'All "App Promotions" items have been completed');
     }
     async doPunchCards(data, page) {
+        // Page fetching is centralized in BrowserFunc so the active proxy and
+        // account context are always used; keep the parameter for callers
+        // compiled against the existing worker signature.
+        void page;
         let parents;
         try {
             const html = await this.bot.browser.func.getRewardsPageHtml(urls_1.URLs.rewards.earn, '/earn');
@@ -173,8 +175,18 @@ class Workers {
             seen.add(pp.offerId);
         }
         for (const p of parents) {
-            if (p.pointProgressMax <= 0) {
-                p.pointProgressMax = apiById.get(p.offerId)?.parentPromotion?.pointProgressMax ?? p.pointProgressMax;
+            const apiParent = apiById.get(p.offerId)?.parentPromotion;
+            if (!apiParent)
+                continue;
+            // /userinfo is the fresh account state; the streamed /earn page
+            // can be stale after a previous mobile/desktop pass. Prefer the
+            // API completion flag so an incomplete punchcard is not discarded
+            // merely because the page snapshot still says complete.
+            p.complete = Boolean(apiParent.complete);
+            if (!p.title && apiParent.title)
+                p.title = apiParent.title;
+            if (Number(apiParent.pointProgressMax ?? 0) > 0) {
+                p.pointProgressMax = apiParent.pointProgressMax;
             }
         }
         const incomplete = parents.filter(p => {
@@ -204,6 +216,7 @@ class Workers {
         await this.bot.activities.doClaimBonusPoints();
     }
     async solvePunchCard(parent, apiCard, page) {
+        void page;
         const parentId = parent.offerId;
         const title = parent.title || apiCard?.parentPromotion?.title || parentId;
         let questChildren;
@@ -227,9 +240,9 @@ class Workers {
         const mergedChildren = new Map();
         for (const child of questChildren) {
             const api = apiChildById.get(child.offerId);
-            const hash = child.hash ?? api?.hash ?? null;
-            const isCompleted = child.isCompleted || !!api?.complete;
-            const isLocked = child.isLocked || api?.exclusiveLockedFeatureStatus === 'locked';
+            const hash = api?.hash ?? child.hash ?? null;
+            const isCompleted = api ? Boolean(api.complete) : child.isCompleted;
+            const isLocked = api ? api.exclusiveLockedFeatureStatus === 'locked' : child.isLocked;
             const isDisabled = child.isDisabled;
             mergedChildren.set(child.offerId, {
                 ...child,
@@ -270,17 +283,22 @@ class Workers {
         for (const child of ordered) {
             const offerId = child.offerId;
             const api = apiChildById.get(offerId);
-            if (!child.reportable) {
+            // A completed punchcard reward is represented by Microsoft as
+            // complete=true/reportable=false. It is still actionable when
+            // its destination is /redeem/ and a live hash is available, so
+            // classify claims before applying the normal activity filter.
+            const isClaim = this.isClaimChild(offerId, api);
+            if (child.isLocked || child.isDisabled) {
                 remaining++;
-                this.bot.logger.debug(this.bot.isMobile, 'PUNCHCARD', `Skip ${offerId}: not reportable (locked=${child.isLocked} disabled=${child.isDisabled} done=${child.isCompleted} hash=${!!child.hash})`);
+                this.bot.logger.debug(this.bot.isMobile, 'PUNCHCARD', `Skip ${offerId}: locked or disabled (locked=${child.isLocked} disabled=${child.isDisabled})`);
                 continue;
             }
-            if (this.isSearchQuotaChild(offerId, api)) {
-                remaining++;
-                this.bot.logger.info(this.bot.isMobile, 'PUNCHCARD', `Skip ${offerId}: multi-day search task`);
-                continue;
-            }
-            if (this.isClaimChild(offerId, api)) {
+            if (isClaim) {
+                if (!child.hash) {
+                    remaining++;
+                    this.bot.logger.warn(this.bot.isMobile, 'PUNCHCARD', `Skip ${offerId}: ready-to-claim reward has no live hash`);
+                    continue;
+                }
                 if (!this.bot.config.autoClaimPunchcardRewards) {
                     remaining++;
                     this.bot.logger.info(this.bot.isMobile, 'PUNCHCARD', `Reward for "${title}" ready to claim - left for manual redemption (autoClaimPunchcardRewards=false) | ${offerId}`);
@@ -288,6 +306,16 @@ class Workers {
                 }
                 await this.bot.activities.doClaimReward(child, parentId);
                 reported++;
+                continue;
+            }
+            if (!child.reportable) {
+                remaining++;
+                this.bot.logger.debug(this.bot.isMobile, 'PUNCHCARD', `Skip ${offerId}: not reportable (done=${child.isCompleted} hash=${!!child.hash})`);
+                continue;
+            }
+            if (this.isSearchQuotaChild(offerId, api)) {
+                remaining++;
+                this.bot.logger.info(this.bot.isMobile, 'PUNCHCARD', `Skip ${offerId}: multi-day search task`);
                 continue;
             }
             await this.reportQuestChild(child, parentId);

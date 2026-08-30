@@ -211,12 +211,30 @@ export function loadConfig(): Config {
         const config = fs.readFileSync(configPath, 'utf-8')
 
         const unverifiedConfig = JSON.parse(config)
-        const configData = validateConfig(unverifiedConfig)
+        const configData = applyRuntimeConfigOverrides(validateConfig(unverifiedConfig))
 
         configCache = configData
 
         return configData
     } catch (error) {
         throw new Error(error as string)
+    }
+}
+
+export function applyRuntimeConfigOverrides(config: Config, sourceEnv: NodeJS.ProcessEnv = process.env): Config {
+    const forceReadyToClaim = ['1', 'true', 'yes', 'on'].includes(
+        String(sourceEnv.QUEUE_FORCE_READY_TO_CLAIM ?? '')
+            .trim()
+            .toLowerCase()
+    )
+    if (!forceReadyToClaim) return config
+
+    return {
+        ...config,
+        autoClaimPunchcardRewards: true,
+        workers: {
+            ...config.workers,
+            doClaimBonusPoints: true
+        }
     }
 }

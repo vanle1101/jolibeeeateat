@@ -1,7 +1,0 @@
-
-> microsoft-rewards-points-checker@1.0.0 start
-> node --env-file-if-exists=.env server.js
-
-[points-checker] Listening on http://127.0.0.1:8891
-[points-checker] Database: E:\Tài Liệu Học Tập - Kiếm Tiền\data\accounts.db
-[points-checker] Max concurrency: 3

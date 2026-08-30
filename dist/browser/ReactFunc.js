@@ -311,23 +311,26 @@ class ReactFunc {
         const KNOWN_NON_NAMES = new Set(['callServer', 'findSourceMapURL', 'encodeFormAction']);
         try {
             // I hate this so much honestly
-            const callRegex = new RegExp(`createServerReference\\s*\\)?\\s*\\(\\s*"(${HEX})"([\\s\\S]{0,400}?)\\)`, 'g');
-            const strLitRe = /"([A-Za-z_$][\w$]*)"/g;
+            // Next.js has emitted both single- and double-quoted server
+            // references. Keep the quote as a backreference so the parser
+            // does not stop at the other quote type inside a minified chunk.
+            const callRegex = new RegExp(`createServerReference\\s*\\)?\\s*\\(\\s*(["'])(${HEX})\\1([\\s\\S]{0,1200}?)\\)`, 'gi');
+            const strLitRe = /(["'])([A-Za-z_$][\w$]*)\1/g;
             for (const m of jsText.matchAll(callRegex)) {
-                const id = m[1];
-                const argsBlock = m[2] ?? '';
+                const id = m[2];
+                const argsBlock = m[3] ?? '';
                 all.add(id);
                 const candidates = [...argsBlock.matchAll(strLitRe)]
-                    .map(x => x[1])
+                    .map(x => x[2])
                     .filter(n => !KNOWN_NON_NAMES.has(n));
                 if (candidates.length)
                     byName[candidates[candidates.length - 1]] = id;
             }
             // bare reference without a name arg, still record the id
-            const bareRegex = new RegExp(`createServerReference\\s*\\)?\\s*\\(\\s*"(${HEX})"`, 'g');
+            const bareRegex = new RegExp(`createServerReference\\s*\\)?\\s*\\(\\s*(["'])(${HEX})\\1`, 'gi');
             for (const m of jsText.matchAll(bareRegex))
-                all.add(m[1]);
-            const actionIdRe = new RegExp(`\\$ACTION_ID_(${HEX})`, 'g');
+                all.add(m[2]);
+            const actionIdRe = new RegExp(`\\$ACTION_ID_(${HEX})`, 'gi');
             for (const m of jsText.matchAll(actionIdRe))
                 all.add(m[1]);
             this.bot.logger.debug(this.bot.isMobile, 'REACT-PARSE', `Extracted action ids | named=${Object.keys(byName).length} | total=${all.size}`);

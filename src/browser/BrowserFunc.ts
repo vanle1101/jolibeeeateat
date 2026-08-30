@@ -19,6 +19,13 @@ import type { PageSnapshot, ParsedOffer } from './ReactFunc'
 const VISUAL_SEARCH_IMAGE_URL = 'https://th.bing.com/th?id=OMR.VisualSearch.VNext.BackgroundImage.png&pid=Rewards'
 const BROWSER_SHUTDOWN_TIMEOUT_MS = 15000
 
+export function calculatePointGain(currentBalance: number | null, baselineBalance: number | null, serverPreviousBalance: number | null): number | null {
+    if (currentBalance == null) return null
+    if (baselineBalance != null) return Math.max(0, currentBalance - baselineBalance)
+    if (serverPreviousBalance != null) return Math.max(0, currentBalance - serverPreviousBalance)
+    return null
+}
+
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {
     let timer: NodeJS.Timeout | undefined
     try {
@@ -348,6 +355,16 @@ export default class BrowserFunc {
         }
     }
 
+    async getReadyToClaimPoints(): Promise<number | null> {
+        const data = await this.getDashboardData()
+        const rawClaimable = data.dashboard.pointClaimBannerPromotion?.attributes?.claimable_points
+        if (rawClaimable == null || String(rawClaimable).trim() === '') return null
+
+        const claimable = Number(rawClaimable)
+
+        return Number.isFinite(claimable) ? Math.max(0, claimable) : null
+    }
+
     private getActiveRewardsPage(): Page | null {
         const page = this.bot.isMobile ? this.bot.mainMobilePage : this.bot.mainDesktopPage
         return page && !page.isClosed() ? page : null
@@ -614,23 +631,30 @@ export default class BrowserFunc {
             this.bot.logger.debug(this.bot.isMobile, 'BOOTSTRAP', `Fetching ${initialChunks.size} initial JS chunks`)
             const jsByPath = await this.fetchJsChunks(page, [...initialChunks])
 
-            // dynamically-imported chunks, server actions inside popover
-            const dynamicPaths: string[] = []
-            for (const js of jsByPath.values()) {
-                for (const path of this.extractDynamicChunkPaths(js)) {
-                    if (!jsByPath.has(path) && !dynamicPaths.includes(path)) {
-                        dynamicPaths.push(path)
+            // Claim/streak controls are often behind a lazily loaded Rewards
+            // drawer. Resolve the webpack manifest transitively instead of
+            // stopping after one level, while keeping a hard cap for a broken
+            // manifest.
+            const requestedPaths = new Set(initialChunks)
+            const maxDynamicChunks = 200
+            for (let round = 0; round < 3 && requestedPaths.size < maxDynamicChunks; round++) {
+                const dynamicPaths = new Set<string>()
+                for (const js of jsByPath.values()) {
+                    for (const path of this.extractDynamicChunkPaths(js)) {
+                        if (!requestedPaths.has(path)) dynamicPaths.add(path)
                     }
                 }
-            }
 
-            if (dynamicPaths.length) {
+                const nextPaths = [...dynamicPaths].slice(0, maxDynamicChunks - requestedPaths.size)
+                if (!nextPaths.length) break
+
+                nextPaths.forEach(path => requestedPaths.add(path))
                 this.bot.logger.debug(
                     this.bot.isMobile,
                     'BOOTSTRAP',
-                    `Fetching ${dynamicPaths.length} dynamic chunks discovered via webpack manifest`
+                    `Fetching ${nextPaths.length} dynamic chunks (round=${round + 1}) discovered via webpack manifest`
                 )
-                const moreJs = await this.fetchJsChunks(page, dynamicPaths)
+                const moreJs = await this.fetchJsChunks(page, nextPaths)
                 for (const [path, js] of moreJs) jsByPath.set(path, js)
             }
 
@@ -657,6 +681,22 @@ export default class BrowserFunc {
                         this.bot.isMobile,
                         'BOOTSTRAP',
                         `Found ${unnamed.length} unnamed action id(s) in ${filename}: [${unnamed.join(', ')}]`
+                    )
+                }
+            }
+
+            // Some server actions are embedded in the streamed RSC response
+            // instead of a client chunk (especially drawer-only controls).
+            // Feed both authenticated page sources through the same extractor.
+            for (const [index, html] of htmls.entries()) {
+                if (!html) continue
+                const ids = this.bot.browser.react.extractActionIds(html)
+                if (Object.keys(ids.byName).length) {
+                    Object.assign(result, ids.byName)
+                    this.bot.logger.debug(
+                        this.bot.isMobile,
+                        'BOOTSTRAP',
+                        `Found ${Object.keys(ids.byName).length} action id(s) in page source ${index + 1}: [${Object.keys(ids.byName).join(', ')}]`
                     )
                 }
             }
@@ -870,6 +910,8 @@ export default class BrowserFunc {
         const cvid = opts?.cvid ?? randomBytes(16).toString('hex')
         const searchUrl = URLs.bing.search(query, cvid)
         const jar = this.getBingJar()
+        const currentBalance = Number(this.bot.userData.currentPoints)
+        const baselineBalance = Number.isFinite(currentBalance) ? currentBalance : null
 
         const base = { ...(this.bot.fingerprint?.headers ?? {}) }
         delete base['Cookie']
@@ -937,8 +979,11 @@ export default class BrowserFunc {
         this.mergeSetCookies(jar, reportRes.headers?.['set-cookie'] as string[] | string | undefined)
 
         const parsed = this.parseReportResponse(reportRes.data)
-        const gained =
-            parsed.balance != null && parsed.previousBalance != null ? parsed.balance - parsed.previousBalance : null
+        // PreviousBalance in the legacy report payload can be the balance at
+        // the start of the whole search session, not the preceding query.
+        // Use the bot's last observed balance for the per-query delta so the
+        // search summary cannot count the same points repeatedly.
+        const gained = calculatePointGain(parsed.balance, baselineBalance, parsed.previousBalance)
 
         this.bot.logger.debug(
             this.bot.isMobile,
@@ -960,6 +1005,8 @@ export default class BrowserFunc {
         const { bcid, query, serpUrl } = visual
 
         const jar = this.getBingJar()
+        const currentBalance = Number(this.bot.userData.currentPoints)
+        const baselineBalance = Number.isFinite(currentBalance) ? currentBalance : null
 
         const base = { ...(this.bot.fingerprint?.headers ?? {}) }
         delete base['Cookie']
@@ -1034,8 +1081,7 @@ export default class BrowserFunc {
         this.mergeSetCookies(jar, reportRes.headers?.['set-cookie'] as string[] | string | undefined)
 
         const parsed = this.parseReportResponse(reportRes.data)
-        const gained =
-            parsed.balance != null && parsed.previousBalance != null ? parsed.balance - parsed.previousBalance : null
+        const gained = calculatePointGain(parsed.balance, baselineBalance, parsed.previousBalance)
 
         this.bot.logger.debug(
             this.bot.isMobile,

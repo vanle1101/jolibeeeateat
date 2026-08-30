@@ -482,6 +482,7 @@ export class JobStore {
         ownerPid = null,
         maxAttempts = 3,
         proxyConcurrency = 1,
+        directConcurrency = proxyConcurrency,
         skipSucceededSince = null
     } = {}) {
         this.db.exec('BEGIN IMMEDIATE')
@@ -523,7 +524,8 @@ export class JobStore {
                                WHEN a.proxy_id IS NULL THEN 'direct:default'
                                WHEN TRIM(COALESCE(p.egress_ip, '')) <> '' THEN 'ip:' || LOWER(p.egress_ip)
                                ELSE 'proxy:' || COALESCE(p.identity_key, p.id)
-                           END AS route_key
+                           END AS route_key,
+                           CASE WHEN a.proxy_id IS NULL THEN 1 ELSE 0 END AS is_direct
                     FROM accounts a
                     LEFT JOIN proxies p ON p.id = a.proxy_id
                     WHERE a.status IN ('ready', 'active')
@@ -541,11 +543,13 @@ export class JobStore {
                 )
                 .all(skipSucceededSince, skipSucceededSince)
 
-            const capacity = Math.max(1, Number(proxyConcurrency) || 1)
+            const proxyCapacity = Math.max(1, Number(proxyConcurrency) || 1)
+            const directCapacity = Math.max(1, Number(directConcurrency) || 1)
             const routeOffsets = new Map()
             const accounts = accountRows.map(account => {
                 const offset = routeOffsets.get(account.route_key) || 0
                 routeOffsets.set(account.route_key, offset + 1)
+                const capacity = Number(account.is_direct) ? directCapacity : proxyCapacity
                 return {
                     ...account,
                     lock_key:

@@ -4,7 +4,7 @@
     "clusters": 0,
     "errorDiagnostics": false,
     "ensureStreakProtection": true,
-    "autoClaimPunchcardRewards": false,
+    "autoClaimPunchcardRewards": true,
     "skipNonPointTasks": true,
     "workers": {
         "doDailySet": true,

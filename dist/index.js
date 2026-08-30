@@ -550,6 +550,11 @@ class MicrosoftRewardsBot {
                 this.userData.initialPoints = data.dashboard.userStatus.availablePoints;
                 this.userData.currentPoints = data.dashboard.userStatus.availablePoints;
                 const initialPoints = this.userData.initialPoints ?? 0;
+                // Drain rewards that were already waiting before this run. A
+                // second pass after all activities catches rewards that become
+                // ready while the account is earning points.
+                if (this.config.workers.doClaimBonusPoints)
+                    await this.workers.doClaimBonusPoints();
                 const browserEarnable = await this.browser.func.getBrowserEarnablePoints();
                 const appEarnable = this.accessToken
                     ? await this.browser.func.getAppEarnablePoints().catch(error => {

@@ -108,7 +108,7 @@ npm run accounts -- cleanup-proxies
 
 Cleanup transfers accounts and stored job references to one surviving proxy inside a transaction before deleting duplicate rows.
 
-Files named `accounts*.csv`, `accounts*.txt`, and `accounts*.json` are ignored by Git, except for the safe example files. Re-running import updates matching emails instead of creating duplicates. Queue-time parallelism for each proxy route is controlled separately by `QUEUE_PROXY_CONCURRENCY`.
+Files named `accounts*.csv`, `accounts*.txt`, and `accounts*.json` are ignored by Git, except for the safe example files. Re-running import updates matching emails instead of creating duplicates. Queue-time parallelism is controlled separately for direct accounts and proxy routes.
 
 ### Local proxy-safe queue
 
@@ -119,6 +119,7 @@ Add these settings to `.env`:
 ```env
 QUEUE_BACKEND=sqlite
 WORKER_CONCURRENCY=3
+DIRECT_ROUTE_CONCURRENCY=3
 QUEUE_PROXY_CONCURRENCY=1
 PROXY_LEASE_TTL_MS=120000
 QUEUE_POLL_INTERVAL_MS=1000
@@ -149,7 +150,7 @@ npm run queue:worker
 npm run queue:schedule
 ```
 
-`WORKER_CONCURRENCY` is the number of account lanes. With `WORKER_CONCURRENCY=3`, the worker exposes lanes `T01`, `T02`, and `T03`. A lane runs exactly one account process at a time. `QUEUE_PROXY_CONCURRENCY` controls how many accounts may share one proxy/egress route concurrently; its default is `1`, so accounts on the same proxy/egress route are serialized. The scheduler keeps distinct proxy routes busy first. Every running job renews its slot lease; losing ownership aborts its browser process. Expired leases from a crashed worker are recovered and retried up to `JOB_MAX_ATTEMPTS`.
+`WORKER_CONCURRENCY` is the number of account lanes. With `WORKER_CONCURRENCY=3`, the worker exposes lanes `T01`, `T02`, and `T03`. A lane runs exactly one account process at a time. `DIRECT_ROUTE_CONCURRENCY` controls how many no-proxy accounts may run at once and defaults to `WORKER_CONCURRENCY`. `QUEUE_PROXY_CONCURRENCY` controls how many accounts may share one proxy/egress route concurrently; its default is `1`, so accounts on the same proxy/egress route are serialized. The scheduler keeps distinct proxy routes busy first. Every running job renews its slot lease; losing ownership aborts its browser process. Expired leases from a crashed worker are recovered and retried up to `JOB_MAX_ATTEMPTS`.
 
 By default, a new batch skips accounts that already produced a validated successful `ACCOUNT-END` during the current local day. A completed run with `pointsGained=0` still counts as successful because there may be nothing left to earn. A flow error, missing `ACCOUNT-END`, non-zero process exit, lost lease, or idle timeout counts as failure and is retried up to `JOB_MAX_ATTEMPTS`. Set `QUEUE_SKIP_SUCCEEDED_TODAY=false` to deliberately run successful accounts again on the same day.
 
@@ -162,7 +163,7 @@ Queue console lines keep their concurrency context on every line:
 
 `QUEUE_LOG_MODE=compact` prints lifecycle, points, warning, and error events. Use `verbose` to print every child-process line or `silent` to keep only queue lifecycle lines. Full unmodified child output is always stored at `data/job-logs/<job-id>.log`; the matching `<job-id>.jsonl` contains structured records for APIs and dashboards. Account addresses are masked only in the shared console so concurrent output remains readable without exposing full addresses.
 
-Add `PROXY_EGRESS_IP` to CSV/TXT imports when multiple proxy endpoints share the same public exit IP. Those endpoints will then use the same `ip:<address>` lock. Without it, the lock falls back to the normalized proxy endpoint identity. Accounts without a proxy share the conservative `direct:default` lock.
+Add `PROXY_EGRESS_IP` to CSV/TXT imports when multiple proxy endpoints share the same public exit IP. Those endpoints will then use the same `ip:<address>` lock. Without it, the lock falls back to the normalized proxy endpoint identity. Accounts without a proxy share the `direct:default` route, split into `DIRECT_ROUTE_CONCURRENCY` lock slots.
 
 Queue environment settings:
 
@@ -170,6 +171,7 @@ Queue environment settings:
 | ---------------------------- | --------- | ------------------------------------------------------- |
 | `QUEUE_BACKEND`              | `sqlite`  | `sqlite` for local use or `redis` for BullMQ            |
 | `WORKER_CONCURRENCY`         | `3`       | Account lanes; each lane runs one account process       |
+| `DIRECT_ROUTE_CONCURRENCY`   | `3`       | Concurrent no-proxy accounts, capped by worker lanes    |
 | `QUEUE_PROXY_CONCURRENCY`    | `1`       | Concurrent accounts allowed per proxy/egress route      |
 | `PROXY_LEASE_TTL_MS`         | `120000`  | Lease lifetime, renewed every third of the TTL          |
 | `QUEUE_POLL_INTERVAL_MS`     | `1000`    | Local worker polling interval                           |
@@ -354,7 +356,7 @@ Edit `config.json` to customize behavior, or set `CONFIG_*` environment variable
 | `clusters`                  | number  | `0`          | Max proxy-safe workers; `0` selects one worker per proxy route     | `CONFIG_CLUSTERS`                     |
 | `errorDiagnostics`          | boolean | `false`      | Save error and unknown-login page diagnostics under `diagnostics/` | `CONFIG_ERROR_DIAGNOSTICS`            |
 | `ensureStreakProtection`    | boolean | `true`       | Ensure streak protection is enabled                                | `CONFIG_ENSURE_STREAK_PROTECTION`     |
-| `autoClaimPunchcardRewards` | boolean | `false`      | Auto-claim completed punchcard rewards                             | `CONFIG_AUTO_CLAIM_PUNCHCARD_REWARDS` |
+| `autoClaimPunchcardRewards` | boolean | `true`       | Auto-claim completed punchcard rewards                             | `CONFIG_AUTO_CLAIM_PUNCHCARD_REWARDS` |
 | `skipNonPointTasks`         | boolean | `true`       | Skip tasks that award no points                                    | `CONFIG_SKIP_NON_POINT_TASKS`         |
 | `searchOnBingLocalQueries`  | boolean | `false`      | Use the local query list for ExploreOnBing                         | `CONFIG_SEARCH_ON_BING_LOCAL`         |
 | `globalTimeout`             | string  | `"30sec"`    | Timeout for all actions                                            | `CONFIG_GLOBAL_TIMEOUT`               |
@@ -451,12 +453,12 @@ Default:
 
 ### Experimental
 
-Opt-in features that may change. Disabled by default.
+API-backed earning paths. Enabled by default; set either flag to `false` to use the browser path for that activity.
 
 | Setting                        | Type    | Default | Description                                                       | Docker environment variable              |
 | ------------------------------ | ------- | ------- | ----------------------------------------------------------------- | ---------------------------------------- |
-| `experimental.apiSearch`       | boolean | `false` | Perform Bing searches over HTTP instead of driving a browser page | `CONFIG_EXPERIMENTAL_API_SEARCH`         |
-| `experimental.apiSearchOnBing` | boolean | `false` | Complete ExploreOnBing offers over HTTP instead of the browser    | `CONFIG_EXPERIMENTAL_API_SEARCH_ON_BING` |
+| `experimental.apiSearch`       | boolean | `true`  | Perform Bing searches over HTTP instead of driving a browser page | `CONFIG_EXPERIMENTAL_API_SEARCH`         |
+| `experimental.apiSearchOnBing` | boolean | `true`  | Complete ExploreOnBing offers over HTTP instead of the browser    | `CONFIG_EXPERIMENTAL_API_SEARCH_ON_BING` |
 
 > [!NOTE]
 > The API paths are faster but depend on the modern dashboard's endpoints. If an ExploreOnBing offer ever fails to be credited, turn `apiSearchOnBing` off to fall back to the browser path.

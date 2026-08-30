@@ -16,8 +16,11 @@ class ClaimReward extends Workers_1.Workers {
             this.bot.logger.warn(this.bot.isMobile, 'CLAIM-REWARD', `Skipping ${offerId}: no live hash on quest child`);
             return;
         }
-        if (!child.reportable) {
-            this.bot.logger.warn(this.bot.isMobile, 'CLAIM-REWARD', `Skipping ${offerId}: not reportable (completed/locked/disabled)`);
+        // Ready-to-claim rewards are commonly complete=true and therefore
+        // reportable=false. Claim eligibility is different from activity
+        // eligibility: only locked/disabled children must be rejected here.
+        if (child.isLocked || child.isDisabled) {
+            this.bot.logger.warn(this.bot.isMobile, 'CLAIM-REWARD', `Skipping ${offerId}: locked or disabled (locked=${child.isLocked} disabled=${child.isDisabled})`);
             return;
         }
         const oldBalance = this.bot.userData.currentPoints;

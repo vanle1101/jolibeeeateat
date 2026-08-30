@@ -15,3 +15,11 @@
 /accounts.import.txt
 /accounts.local.txt
 /accounts-mail-pass-proxy.txt
+
+# Dependencies & Archives
+node_modules/
+*.rar
+*.zip
+*.7z
+*.tar.gz
+Microsoft-Rewards-Script/

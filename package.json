@@ -31,7 +31,7 @@
         "accounts:import": "node --no-warnings ./scripts/main/accountsDb.js import",
         "queue:schedule": "node --no-warnings ./scripts/main/queueScheduler.js",
         "queue:dry-run": "node --no-warnings ./scripts/main/queueDryRun.js",
-        "queue:run": "node --no-warnings ./scripts/main/queueRun.js",
+        "queue:run": "call \"%npm_node_execpath%\" --no-warnings ./scripts/main/queueRun.js",
         "queue:worker": "node --no-warnings ./scripts/main/queueWorker.js",
         "queue:status": "node --no-warnings ./scripts/main/queueStatus.js",
         "queue:dispatch": "node --no-warnings ./scripts/main/queueStatus.js --dispatch",

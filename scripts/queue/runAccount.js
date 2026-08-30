@@ -8,6 +8,17 @@ import { applyLogToRunState, createRunState, parseLogLine, summarizeRunState } f
 
 const IS_WIN = process.platform === 'win32'
 
+export function buildQueueAccountChildEnv(baseEnv, accountEnv) {
+    return {
+        ...baseEnv,
+        ...accountEnv,
+        // A queue job is only complete after its final Ready-to-claim pass.
+        // Keep this queue-specific so normal `npm start` runs still respect
+        // config.json exactly as written.
+        QUEUE_FORCE_READY_TO_CLAIM: 'true'
+    }
+}
+
 export function accountRunFailure(run) {
     if (!run?.finished) return 'Account process exited without a complete RUN-END result.'
 
@@ -102,7 +113,7 @@ export async function runAccountProcess(
         let idleTimer = null
         const child = spawn(process.execPath, ['--no-warnings', executable], {
             cwd: projectRoot,
-            env: { ...process.env, ...selection.env },
+            env: buildQueueAccountChildEnv(process.env, selection.env),
             stdio: ['ignore', 'pipe', 'pipe'],
             detached: !IS_WIN,
             windowsHide: true

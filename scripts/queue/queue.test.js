@@ -64,6 +64,41 @@ test('account imports reject direct routes', () => {
     }
 })
 
+test('direct accounts can use multiple worker lanes without changing proxy safety', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rewards-direct-lanes-'))
+    process.env.ACCOUNTS_DB_PATH = path.join(tempDir, 'accounts.db')
+    process.env.ACCOUNTS_DB_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+    importAccountBundle(process.cwd(), {
+        allowDirectAccounts: true,
+        accounts: [
+            { email: 'direct-one@example.com', password: 'secret-1', useProxy: false },
+            { email: 'direct-two@example.com', password: 'secret-2', useProxy: false },
+            { email: 'direct-three@example.com', password: 'secret-3', useProxy: false },
+            { email: 'direct-four@example.com', password: 'secret-4', useProxy: false }
+        ]
+    })
+
+    const store = new JobStore(process.cwd())
+    try {
+        const batch = store.createBatch({ proxyConcurrency: 1, directConcurrency: 3 })
+        assert.equal(batch.routes, 1)
+        assert.equal(batch.lockGroups, 3)
+
+        const active = [
+            store.claimNextSqliteJob('lane-1', 15000),
+            store.claimNextSqliteJob('lane-2', 15000),
+            store.claimNextSqliteJob('lane-3', 15000)
+        ]
+        assert.equal(active.every(Boolean), true)
+        assert.equal(new Set(active.map(row => row.lock_key)).size, 3)
+        assert.equal(store.claimNextSqliteJob('lane-4', 15000), null)
+    } finally {
+        store.close()
+        fs.rmSync(tempDir, { recursive: true, force: true })
+    }
+})
+
 test('scheduler serializes accounts sharing an egress IP and leases enforce ownership', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rewards-queue-test-'))
     process.env.ACCOUNTS_DB_PATH = path.join(tempDir, 'accounts.db')

@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite'
 
 import type { Account } from '../interface/Account'
 import { decryptAccountSecret } from './AccountSecrets'
+import { configureSqliteDatabase, withSqliteBusyRetry, withSqliteTransaction } from './SqliteRetry'
 
 const DEFAULT_DB_PATH = path.join('data', 'accounts.db')
 
@@ -43,10 +44,10 @@ export function ensureAccountsDatabase(dbPath: string): void {
     const db = new DatabaseSync(dbPath)
 
     try {
-        db.exec(`
-            PRAGMA journal_mode = WAL;
+        configureSqliteDatabase(db)
+        withSqliteBusyRetry(() =>
+            db.exec(`
             PRAGMA foreign_keys = ON;
-            PRAGMA busy_timeout = 5000;
 
             CREATE TABLE IF NOT EXISTS proxies (
                 id TEXT PRIMARY KEY,
@@ -94,26 +95,39 @@ export function ensureAccountsDatabase(dbPath: string): void {
             CREATE INDEX IF NOT EXISTS idx_accounts_slot ON accounts(slot);
             CREATE INDEX IF NOT EXISTS idx_proxies_status ON proxies(status);
         `)
+        )
 
         const proxyColumns = new Set(
-            (db.prepare('PRAGMA table_info(proxies)').all() as unknown as Array<{ name: string }>).map(row => row.name)
+            (
+                withSqliteBusyRetry(() => db.prepare('PRAGMA table_info(proxies)').all()) as unknown as Array<{
+                    name: string
+                }>
+            ).map(row => row.name)
         )
         if (!proxyColumns.has('account_capacity')) {
-            db.exec('ALTER TABLE proxies ADD COLUMN account_capacity INTEGER NOT NULL DEFAULT 1')
+            withSqliteBusyRetry(() =>
+                db.exec('ALTER TABLE proxies ADD COLUMN account_capacity INTEGER NOT NULL DEFAULT 1')
+            )
         }
         if (!proxyColumns.has('identity_key')) {
-            db.exec('ALTER TABLE proxies ADD COLUMN identity_key TEXT')
+            withSqliteBusyRetry(() => db.exec('ALTER TABLE proxies ADD COLUMN identity_key TEXT'))
         }
         if (!proxyColumns.has('egress_ip')) {
-            db.exec('ALTER TABLE proxies ADD COLUMN egress_ip TEXT')
+            withSqliteBusyRetry(() => db.exec('ALTER TABLE proxies ADD COLUMN egress_ip TEXT'))
         }
         const accountColumns = new Set(
-            (db.prepare('PRAGMA table_info(accounts)').all() as unknown as Array<{ name: string }>).map(row => row.name)
+            (
+                withSqliteBusyRetry(() => db.prepare('PRAGMA table_info(accounts)').all()) as unknown as Array<{
+                    name: string
+                }>
+            ).map(row => row.name)
         )
         if (!accountColumns.has('use_proxy')) {
-            db.exec('ALTER TABLE accounts ADD COLUMN use_proxy INTEGER NOT NULL DEFAULT 1')
+            withSqliteBusyRetry(() => db.exec('ALTER TABLE accounts ADD COLUMN use_proxy INTEGER NOT NULL DEFAULT 1'))
         }
-        db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_proxies_identity_key ON proxies(identity_key)')
+        withSqliteBusyRetry(() =>
+            db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_proxies_identity_key ON proxies(identity_key)')
+        )
     } finally {
         db.close()
     }
@@ -127,9 +141,12 @@ export function loadAccountsFromDatabase(projectRoot: string): Account[] | null 
     const db = new DatabaseSync(dbPath, { readOnly: true })
 
     try {
-        const rows = db
-            .prepare(
-                `
+        configureSqliteDatabase(db, true)
+        const rows = withSqliteBusyRetry(
+            () =>
+                db
+                    .prepare(
+                        `
                 SELECT
                     a.id AS account_id,
                     a.email,
@@ -156,8 +173,9 @@ export function loadAccountsFromDatabase(projectRoot: string): Account[] | null 
                   AND (a.proxy_id IS NULL OR p.status = 'active')
                 ORDER BY COALESCE(a.slot, 2147483647), a.email
                 `
-            )
-            .all() as unknown as AccountRow[]
+                    )
+                    .all() as unknown as AccountRow[]
+        )
 
         return rows.map(row => ({
             accountId: row.account_id,
@@ -225,39 +243,36 @@ export function disableAccountInDatabase(
     ensureAccountsDatabase(dbPath)
     const db = new DatabaseSync(dbPath)
     try {
-        db.exec('PRAGMA busy_timeout = 5000;')
+        configureSqliteDatabase(db)
 
-        const existing = db.prepare('SELECT id FROM accounts WHERE LOWER(email) = LOWER(?)').get(normalizedEmail) as
-            { id: string } | undefined
+        const existing = withSqliteBusyRetry(
+            () =>
+                db.prepare('SELECT id FROM accounts WHERE LOWER(email) = LOWER(?)').get(normalizedEmail) as
+                    { id: string } | undefined
+        )
         if (!existing) return { persisted: false, inDatabase: false, mode }
 
         if (mode === 'delete') {
-            db.exec('PRAGMA foreign_keys = ON; BEGIN IMMEDIATE;')
-            try {
+            return withSqliteTransaction(db, () => {
+                db.exec('PRAGMA foreign_keys = ON')
                 db.prepare(
                     `INSERT INTO deleted_accounts (email, deleted_at)
                      VALUES (?, CURRENT_TIMESTAMP)
                      ON CONFLICT(email) DO UPDATE SET deleted_at = excluded.deleted_at`
                 ).run(normalizedEmail)
                 const result = db.prepare('DELETE FROM accounts WHERE id = ?').run(existing.id)
-                db.exec('COMMIT')
                 return { persisted: Number(result.changes ?? 0) > 0, inDatabase: true, mode }
-            } catch (error) {
-                try {
-                    db.exec('ROLLBACK')
-                } catch {
-                    /* ignore rollback failure */
-                }
-                throw error
-            }
+            })
         }
 
-        const result = db
-            .prepare(
-                `UPDATE accounts SET status = 'disabled', updated_at = CURRENT_TIMESTAMP
+        const result = withSqliteBusyRetry(() =>
+            db
+                .prepare(
+                    `UPDATE accounts SET status = 'disabled', updated_at = CURRENT_TIMESTAMP
                  WHERE id = ? AND status != 'disabled'`
-            )
-            .run(existing.id)
+                )
+                .run(existing.id)
+        )
         return { persisted: Number(result.changes ?? 0) > 0, inDatabase: true, mode }
     } finally {
         db.close()

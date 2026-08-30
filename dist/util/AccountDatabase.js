@@ -11,6 +11,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const node_sqlite_1 = require("node:sqlite");
 const AccountSecrets_1 = require("./AccountSecrets");
+const SqliteRetry_1 = require("./SqliteRetry");
 const DEFAULT_DB_PATH = path_1.default.join('data', 'accounts.db');
 function resolveProjectRelative(projectRoot, maybeRelativePath) {
     return path_1.default.isAbsolute(maybeRelativePath) ? maybeRelativePath : path_1.default.join(projectRoot, maybeRelativePath);
@@ -23,10 +24,9 @@ function ensureAccountsDatabase(dbPath) {
     fs_1.default.mkdirSync(path_1.default.dirname(dbPath), { recursive: true });
     const db = new node_sqlite_1.DatabaseSync(dbPath);
     try {
-        db.exec(`
-            PRAGMA journal_mode = WAL;
+        (0, SqliteRetry_1.configureSqliteDatabase)(db);
+        (0, SqliteRetry_1.withSqliteBusyRetry)(() => db.exec(`
             PRAGMA foreign_keys = ON;
-            PRAGMA busy_timeout = 5000;
 
             CREATE TABLE IF NOT EXISTS proxies (
                 id TEXT PRIMARY KEY,
@@ -73,22 +73,22 @@ function ensureAccountsDatabase(dbPath) {
             CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status);
             CREATE INDEX IF NOT EXISTS idx_accounts_slot ON accounts(slot);
             CREATE INDEX IF NOT EXISTS idx_proxies_status ON proxies(status);
-        `);
-        const proxyColumns = new Set(db.prepare('PRAGMA table_info(proxies)').all().map(row => row.name));
+        `));
+        const proxyColumns = new Set((0, SqliteRetry_1.withSqliteBusyRetry)(() => db.prepare('PRAGMA table_info(proxies)').all()).map(row => row.name));
         if (!proxyColumns.has('account_capacity')) {
-            db.exec('ALTER TABLE proxies ADD COLUMN account_capacity INTEGER NOT NULL DEFAULT 1');
+            (0, SqliteRetry_1.withSqliteBusyRetry)(() => db.exec('ALTER TABLE proxies ADD COLUMN account_capacity INTEGER NOT NULL DEFAULT 1'));
         }
         if (!proxyColumns.has('identity_key')) {
-            db.exec('ALTER TABLE proxies ADD COLUMN identity_key TEXT');
+            (0, SqliteRetry_1.withSqliteBusyRetry)(() => db.exec('ALTER TABLE proxies ADD COLUMN identity_key TEXT'));
         }
         if (!proxyColumns.has('egress_ip')) {
-            db.exec('ALTER TABLE proxies ADD COLUMN egress_ip TEXT');
+            (0, SqliteRetry_1.withSqliteBusyRetry)(() => db.exec('ALTER TABLE proxies ADD COLUMN egress_ip TEXT'));
         }
-        const accountColumns = new Set(db.prepare('PRAGMA table_info(accounts)').all().map(row => row.name));
+        const accountColumns = new Set((0, SqliteRetry_1.withSqliteBusyRetry)(() => db.prepare('PRAGMA table_info(accounts)').all()).map(row => row.name));
         if (!accountColumns.has('use_proxy')) {
-            db.exec('ALTER TABLE accounts ADD COLUMN use_proxy INTEGER NOT NULL DEFAULT 1');
+            (0, SqliteRetry_1.withSqliteBusyRetry)(() => db.exec('ALTER TABLE accounts ADD COLUMN use_proxy INTEGER NOT NULL DEFAULT 1'));
         }
-        db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_proxies_identity_key ON proxies(identity_key)');
+        (0, SqliteRetry_1.withSqliteBusyRetry)(() => db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_proxies_identity_key ON proxies(identity_key)'));
     }
     finally {
         db.close();
@@ -101,7 +101,8 @@ function loadAccountsFromDatabase(projectRoot) {
     ensureAccountsDatabase(dbPath);
     const db = new node_sqlite_1.DatabaseSync(dbPath, { readOnly: true });
     try {
-        const rows = db
+        (0, SqliteRetry_1.configureSqliteDatabase)(db, true);
+        const rows = (0, SqliteRetry_1.withSqliteBusyRetry)(() => db
             .prepare(`
                 SELECT
                     a.id AS account_id,
@@ -129,7 +130,7 @@ function loadAccountsFromDatabase(projectRoot) {
                   AND (a.proxy_id IS NULL OR p.status = 'active')
                 ORDER BY COALESCE(a.slot, 2147483647), a.email
                 `)
-            .all();
+            .all());
         return rows.map(row => ({
             accountId: row.account_id,
             proxyId: row.proxy_id,
@@ -181,34 +182,24 @@ function disableAccountInDatabase(projectRoot, email, mode) {
     ensureAccountsDatabase(dbPath);
     const db = new node_sqlite_1.DatabaseSync(dbPath);
     try {
-        db.exec('PRAGMA busy_timeout = 5000;');
-        const existing = db.prepare('SELECT id FROM accounts WHERE LOWER(email) = LOWER(?)').get(normalizedEmail);
+        (0, SqliteRetry_1.configureSqliteDatabase)(db);
+        const existing = (0, SqliteRetry_1.withSqliteBusyRetry)(() => db.prepare('SELECT id FROM accounts WHERE LOWER(email) = LOWER(?)').get(normalizedEmail));
         if (!existing)
             return { persisted: false, inDatabase: false, mode };
         if (mode === 'delete') {
-            db.exec('PRAGMA foreign_keys = ON; BEGIN IMMEDIATE;');
-            try {
+            return (0, SqliteRetry_1.withSqliteTransaction)(db, () => {
+                db.exec('PRAGMA foreign_keys = ON');
                 db.prepare(`INSERT INTO deleted_accounts (email, deleted_at)
                      VALUES (?, CURRENT_TIMESTAMP)
                      ON CONFLICT(email) DO UPDATE SET deleted_at = excluded.deleted_at`).run(normalizedEmail);
                 const result = db.prepare('DELETE FROM accounts WHERE id = ?').run(existing.id);
-                db.exec('COMMIT');
                 return { persisted: Number(result.changes ?? 0) > 0, inDatabase: true, mode };
-            }
-            catch (error) {
-                try {
-                    db.exec('ROLLBACK');
-                }
-                catch {
-                    /* ignore rollback failure */
-                }
-                throw error;
-            }
+            });
         }
-        const result = db
+        const result = (0, SqliteRetry_1.withSqliteBusyRetry)(() => db
             .prepare(`UPDATE accounts SET status = 'disabled', updated_at = CURRENT_TIMESTAMP
                  WHERE id = ? AND status != 'disabled'`)
-            .run(existing.id);
+            .run(existing.id));
         return { persisted: Number(result.changes ?? 0) > 0, inDatabase: true, mode };
     }
     finally {

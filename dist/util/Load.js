@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getProjectRoot = getProjectRoot;
 exports.loadAccounts = loadAccounts;
 exports.loadConfig = loadConfig;
+exports.applyRuntimeConfigOverrides = applyRuntimeConfigOverrides;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const AccountDatabase_1 = require("./AccountDatabase");
@@ -188,12 +189,27 @@ function loadConfig() {
         }
         const config = fs_1.default.readFileSync(configPath, 'utf-8');
         const unverifiedConfig = JSON.parse(config);
-        const configData = (0, Validator_1.validateConfig)(unverifiedConfig);
+        const configData = applyRuntimeConfigOverrides((0, Validator_1.validateConfig)(unverifiedConfig));
         configCache = configData;
         return configData;
     }
     catch (error) {
         throw new Error(error);
     }
+}
+function applyRuntimeConfigOverrides(config, sourceEnv = process.env) {
+    const forceReadyToClaim = ['1', 'true', 'yes', 'on'].includes(String(sourceEnv.QUEUE_FORCE_READY_TO_CLAIM ?? '')
+        .trim()
+        .toLowerCase());
+    if (!forceReadyToClaim)
+        return config;
+    return {
+        ...config,
+        autoClaimPunchcardRewards: true,
+        workers: {
+            ...config.workers,
+            doClaimBonusPoints: true
+        }
+    };
 }
 //# sourceMappingURL=Load.js.map

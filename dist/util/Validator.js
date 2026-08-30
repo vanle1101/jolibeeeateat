@@ -100,10 +100,10 @@ exports.ConfigSchema = zod_1.z.object({
     }),
     experimental: zod_1.z
         .object({
-        apiSearch: zod_1.z.boolean().default(false),
-        apiSearchOnBing: zod_1.z.boolean().default(false)
+        apiSearch: zod_1.z.boolean().default(true),
+        apiSearchOnBing: zod_1.z.boolean().default(true)
     })
-        .default({ apiSearch: false, apiSearchOnBing: false }),
+        .default({ apiSearch: true, apiSearchOnBing: true }),
     debugLogs: zod_1.z.boolean(),
     proxy: zod_1.z.object({
         queryEngine: zod_1.z.boolean(),
@@ -151,7 +151,7 @@ const defaultConfig = {
     clusters: 0,
     errorDiagnostics: true,
     ensureStreakProtection: true,
-    autoClaimPunchcardRewards: false,
+    autoClaimPunchcardRewards: true,
     skipNonPointTasks: true,
     workers: {
         doDailySet: true,
@@ -185,8 +185,8 @@ const defaultConfig = {
         readDelay: { min: '30sec', max: '1min' }
     },
     experimental: {
-        apiSearch: false,
-        apiSearchOnBing: false
+        apiSearch: true,
+        apiSearchOnBing: true
     },
     debugLogs: false,
     proxy: { queryEngine: true, verifyExitIp: true, onProxyMismatch: 'warn' },

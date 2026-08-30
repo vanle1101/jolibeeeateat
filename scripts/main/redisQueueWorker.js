@@ -129,7 +129,7 @@ worker.on('error', error => log('ERROR', `Worker error: ${error.message}`))
 
 log(
     'SUCCESS',
-    `Redis queue worker ${workerId} ready | queue=${configuredQueueName} | lanes=${concurrency} | maxLanes=${config.concurrency} | proxySlots=${config.proxyConcurrency} | logMode=${config.logMode} | dryRun=${config.dryRun}`
+    `Redis queue worker ${workerId} ready | queue=${configuredQueueName} | lanes=${concurrency} | maxLanes=${config.concurrency} | directSlots=${config.directConcurrency} | proxySlots=${config.proxyConcurrency} | logMode=${config.logMode} | dryRun=${config.dryRun}`
 )
 
 let shuttingDown = false

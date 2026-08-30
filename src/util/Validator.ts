@@ -100,10 +100,10 @@ export const ConfigSchema = z.object({
     }),
     experimental: z
         .object({
-            apiSearch: z.boolean().default(false),
-            apiSearchOnBing: z.boolean().default(false)
+            apiSearch: z.boolean().default(true),
+            apiSearchOnBing: z.boolean().default(true)
         })
-        .default({ apiSearch: false, apiSearchOnBing: false }),
+        .default({ apiSearch: true, apiSearchOnBing: true }),
     debugLogs: z.boolean(),
     proxy: z.object({
         queryEngine: z.boolean(),
@@ -153,7 +153,7 @@ const defaultConfig: Config = {
     clusters: 0,
     errorDiagnostics: true,
     ensureStreakProtection: true,
-    autoClaimPunchcardRewards: false,
+    autoClaimPunchcardRewards: true,
     skipNonPointTasks: true,
     workers: {
         doDailySet: true,
@@ -187,8 +187,8 @@ const defaultConfig: Config = {
         readDelay: { min: '30sec', max: '1min' }
     },
     experimental: {
-        apiSearch: false,
-        apiSearchOnBing: false
+        apiSearch: true,
+        apiSearchOnBing: true
     },
     debugLogs: false,
     proxy: { queryEngine: true, verifyExitIp: true, onProxyMismatch: 'warn' },

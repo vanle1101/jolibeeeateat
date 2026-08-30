@@ -4,6 +4,7 @@ import type { Counters, DashboardData } from './../interface/DashboardData';
 import type { AppEarnablePoints, BrowserEarnablePoints, MissingSearchPoints } from '../interface/Points';
 import type { AppDashboardData } from '../interface/AppDashBoardData';
 import type { PageSnapshot, ParsedOffer } from './ReactFunc';
+export declare function calculatePointGain(currentBalance: number | null, baselineBalance: number | null, serverPreviousBalance: number | null): number | null;
 export declare class RewardsAuthenticationRequiredError extends Error {
     readonly destination: string;
     constructor(finalUrl: string);
@@ -20,6 +21,7 @@ export default class BrowserFunc {
     getBrowserEarnablePoints(): Promise<BrowserEarnablePoints>;
     getAppEarnablePoints(): Promise<AppEarnablePoints>;
     getCurrentPoints(): Promise<number>;
+    getReadyToClaimPoints(): Promise<number | null>;
     private getActiveRewardsPage;
     /**
      * Fetch a Rewards page through the active browser context. The RSC payload

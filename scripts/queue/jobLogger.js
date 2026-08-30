@@ -4,6 +4,7 @@ const COMPACT_TITLES = new Set([
     'RUN-START',
     'ACCOUNT-START',
     'POINTS',
+    'CLAIM-BONUS-POINTS',
     'MORE-PROMOTIONS',
     'READ-TO-EARN',
     'FLOW',

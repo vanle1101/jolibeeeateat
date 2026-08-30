@@ -125,7 +125,7 @@ process.on('SIGTERM', () => requestShutdown('SIGTERM'))
 
 log(
     'SUCCESS',
-    `SQLite queue worker ${workerId} ready | lanes=${concurrency} | maxLanes=${config.concurrency} | proxySlots=${config.proxyConcurrency} | logMode=${config.logMode} | dryRun=${config.dryRun} | exitWhenIdle=${config.exitWhenIdle}`
+    `SQLite queue worker ${workerId} ready | lanes=${concurrency} | maxLanes=${config.concurrency} | directSlots=${config.directConcurrency} | proxySlots=${config.proxyConcurrency} | logMode=${config.logMode} | dryRun=${config.dryRun} | exitWhenIdle=${config.exitWhenIdle}`
 )
 
 try {

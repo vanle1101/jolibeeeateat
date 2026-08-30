@@ -29,12 +29,13 @@ try {
         ownerPid: process.pid,
         maxAttempts: config.maxAttempts,
         proxyConcurrency: config.proxyConcurrency,
+        directConcurrency: config.directConcurrency,
         skipSucceededSince: config.skipSucceededToday ? localDayStartUtc() : null
     })
     batch = store.getBatch(created.batchId)
     log(
         'SUCCESS',
-        `Batch ${created.batchId} created with ${created.jobs} jobs across ${created.routes} proxy route(s) and ${created.lockGroups} concurrency slot(s); skippedToday=${created.skippedSucceeded}.`
+        `Batch ${created.batchId} created with ${created.jobs} jobs across ${created.routes} route(s) and ${created.lockGroups} concurrency slot(s); skippedToday=${created.skippedSucceeded}.`
     )
 } finally {
     store.close()

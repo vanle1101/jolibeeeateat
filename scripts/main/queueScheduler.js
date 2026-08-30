@@ -15,11 +15,12 @@ try {
         source: String(args.source || 'manual'),
         maxAttempts: config.maxAttempts,
         proxyConcurrency: config.proxyConcurrency,
+        directConcurrency: config.directConcurrency,
         skipSucceededSince: config.skipSucceededToday ? localDayStartUtc() : null
     })
     log(
         'SUCCESS',
-        `Batch ${batch.batchId} created with ${batch.jobs} jobs across ${batch.routes} proxy route(s) and ${batch.lockGroups} concurrency slot(s); skippedToday=${batch.skippedSucceeded}.`
+        `Batch ${batch.batchId} created with ${batch.jobs} jobs across ${batch.routes} route(s) and ${batch.lockGroups} concurrency slot(s); skippedToday=${batch.skippedSucceeded}.`
     )
     if (batch.jobs === 0) {
         log('INFO', 'No jobs dispatched because every eligible account already completed successfully today.')

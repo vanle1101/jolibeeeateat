@@ -16,9 +16,11 @@ export function queueRuntimeConfig() {
     if (!['compact', 'verbose', 'silent'].includes(logMode))
         throw new Error('QUEUE_LOG_MODE must be compact, verbose, or silent.')
     const concurrency = positiveInt(process.env.WORKER_CONCURRENCY, 3)
+    const directConcurrency = positiveInt(process.env.DIRECT_ROUTE_CONCURRENCY, concurrency)
     return {
         backend,
         concurrency,
+        directConcurrency: Math.min(directConcurrency, concurrency),
         // Each proxy/egress route gets one slot by default so accounts sharing
         // a proxy are serialized even when many worker lanes are available.
         proxyConcurrency: positiveInt(process.env.QUEUE_PROXY_CONCURRENCY, 1),
