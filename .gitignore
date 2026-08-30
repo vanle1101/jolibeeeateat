@@ -13,8 +13,6 @@
 
 # Account input files (keep only the redacted examples)
 /accounts.import.txt
-/accounts.local.txt
-/accounts-mail-pass-proxy.txt
 
 # Dependencies & Archives
 node_modules/
