@@ -289,8 +289,10 @@ const server = http.createServer((req, res) => {
   return serveStatic(res, url.pathname);
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  log(`listening at http://127.0.0.1:${PORT}`);
+const HOST = process.env.HOST || "0.0.0.0";
+
+server.listen(PORT, HOST, () => {
+  log(`listening at http://${HOST}:${PORT}`);
   log(`VPS Control API: ${CONTROL_API_URL}${CONTROL_API_TOKEN ? " (token set)" : " (token missing)"}`);
   if (!CONTROL_API_TOKEN) log("warning: CONTROL_API_TOKEN is empty");
   if (!DASHBOARD_AUTH_ENABLED) log("warning: browser login is disabled");
