@@ -266,11 +266,6 @@ function runPointCheck(account) {
         error.code = 'BAD_REQUEST'
         throw error
     }
-    if (!account.proxy?.url) {
-        const error = new Error('Account has no assigned proxy; direct fallback is disabled.')
-        error.code = 'BAD_REQUEST'
-        throw error
-    }
 
     const existing = pointCheckInFlight.get(accountId)
     if (existing) return existing

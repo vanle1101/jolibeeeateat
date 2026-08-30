@@ -38,7 +38,6 @@ async function main() {
   const { MicrosoftRewardsBot } = require(path.join(PROJECT_ROOT, "dist", "index.js"));
   const account = loadAccounts().find(item => item.accountId === accountId);
   if (!account) throw new Error(`Account is not active or does not exist: ${accountId}`);
-  if (!account.proxy?.url) throw new Error("Account has no assigned proxy; direct fallback is disabled.");
 
   const bot = new MicrosoftRewardsBot();
   const result = await bot.checkAccountPoints(account);
