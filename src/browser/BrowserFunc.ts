@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto'
 import { URLs } from '../constants/urls'
 import { buildAppHeaders } from './DeviceIdentity'
 import type { BrowserContext, Cookie, Page } from 'patchright'
-import { ProxyUnavailableError, type HttpRequestConfig } from '../util/Http'
+import { type HttpRequestConfig } from '../util/Http'
 
 import type { MicrosoftRewardsBot } from '../index'
 import { saveStorageState } from '../util/SessionStore'
@@ -125,24 +125,20 @@ export default class BrowserFunc {
             }
             throw new Error('Dashboard data missing from API response')
         } catch (error) {
-            // The browser context is already bound to the account's configured
-            // proxy. If Impit's separate proxy transport is temporarily stuck,
-            // reuse that authenticated/proxied context instead of falling back
-            // to a direct connection or failing a search-progress measurement.
-            if (error instanceof ProxyUnavailableError && page && !page.isClosed()) {
+            if (page && !page.isClosed()) {
                 try {
                     const data = await this.getDashboardDataFromBrowser(page, request)
                     this.bot.logger.warn(
                         this.bot.isMobile,
                         'GET-DASHBOARD-DATA',
-                        'Primary proxy transport unavailable; recovered through browser-context proxy transport'
+                        `HTTP request failed (${error instanceof Error ? error.message : String(error)}); recovered through browser-context fallback`
                     )
                     return data
                 } catch (fallbackError) {
                     this.bot.logger.error(
                         this.bot.isMobile,
                         'GET-DASHBOARD-DATA',
-                        `Failed to get dashboard data: ${error.message} | browser-context fallback failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`
+                        `Failed to get dashboard data: ${error instanceof Error ? error.message : String(error)} | browser-context fallback failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`
                     )
                     throw fallbackError
                 }

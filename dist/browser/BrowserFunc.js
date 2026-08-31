@@ -5,7 +5,6 @@ exports.calculatePointGain = calculatePointGain;
 const crypto_1 = require("crypto");
 const urls_1 = require("../constants/urls");
 const DeviceIdentity_1 = require("./DeviceIdentity");
-const Http_1 = require("../util/Http");
 const SessionStore_1 = require("../util/SessionStore");
 const Utils_1 = require("../util/Utils");
 // Bing-hosted image used to seed the daily visual search. /images/kblob fetches it (Can be changed)
@@ -111,18 +110,14 @@ class BrowserFunc {
             throw new Error('Dashboard data missing from API response');
         }
         catch (error) {
-            // The browser context is already bound to the account's configured
-            // proxy. If Impit's separate proxy transport is temporarily stuck,
-            // reuse that authenticated/proxied context instead of falling back
-            // to a direct connection or failing a search-progress measurement.
-            if (error instanceof Http_1.ProxyUnavailableError && page && !page.isClosed()) {
+            if (page && !page.isClosed()) {
                 try {
                     const data = await this.getDashboardDataFromBrowser(page, request);
-                    this.bot.logger.warn(this.bot.isMobile, 'GET-DASHBOARD-DATA', 'Primary proxy transport unavailable; recovered through browser-context proxy transport');
+                    this.bot.logger.warn(this.bot.isMobile, 'GET-DASHBOARD-DATA', `HTTP request failed (${error instanceof Error ? error.message : String(error)}); recovered through browser-context fallback`);
                     return data;
                 }
                 catch (fallbackError) {
-                    this.bot.logger.error(this.bot.isMobile, 'GET-DASHBOARD-DATA', `Failed to get dashboard data: ${error.message} | browser-context fallback failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+                    this.bot.logger.error(this.bot.isMobile, 'GET-DASHBOARD-DATA', `Failed to get dashboard data: ${error instanceof Error ? error.message : String(error)} | browser-context fallback failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
                     throw fallbackError;
                 }
             }
