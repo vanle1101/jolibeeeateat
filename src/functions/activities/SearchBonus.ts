@@ -56,7 +56,7 @@ export class BonusTracker implements SearchTracker {
         this.offerId = offer.offerId
         this.max = offer.pointProgressMax
         this.current = offer.pointProgress
-        this.balance = dashboard.userStatus.availablePoints
+        this.balance = dashboard?.userStatus?.availablePoints ?? 0
         this.started = true
 
         this.bot.logger.info(
@@ -70,12 +70,12 @@ export class BonusTracker implements SearchTracker {
     async measure(): Promise<number> {
         let dash: Dashboard
         try {
-            dash = (await this.bot.browser.func.getDashboardData(undefined, this.page)).dashboard
+            dash = (await this.bot.browser.func.getDashboardData(undefined, this.page))?.dashboard
         } catch {
             return 0
         }
 
-        const newBalance = dash.userStatus.availablePoints
+        const newBalance = dash?.userStatus?.availablePoints ?? this.balance
         const balanceGain = newBalance - this.balance
         if (balanceGain > 0) {
             this.bot.userData.currentPoints = newBalance

@@ -43,7 +43,7 @@ class BonusTracker {
         this.offerId = offer.offerId;
         this.max = offer.pointProgressMax;
         this.current = offer.pointProgress;
-        this.balance = dashboard.userStatus.availablePoints;
+        this.balance = dashboard?.userStatus?.availablePoints ?? 0;
         this.started = true;
         this.bot.logger.info(this.isMobile, this.context, `Found search bonus "${offer.title}" | offerId=${this.offerId} | progress=${this.current}/${this.max} | maxSearches=${this.maxSearches}`);
         return true;
@@ -51,12 +51,12 @@ class BonusTracker {
     async measure() {
         let dash;
         try {
-            dash = (await this.bot.browser.func.getDashboardData(undefined, this.page)).dashboard;
+            dash = (await this.bot.browser.func.getDashboardData(undefined, this.page))?.dashboard;
         }
         catch {
             return 0;
         }
-        const newBalance = dash.userStatus.availablePoints;
+        const newBalance = dash?.userStatus?.availablePoints ?? this.balance;
         const balanceGain = newBalance - this.balance;
         if (balanceGain > 0) {
             this.bot.userData.currentPoints = newBalance;

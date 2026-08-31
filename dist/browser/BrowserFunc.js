@@ -170,7 +170,7 @@ class BrowserFunc {
     }
     async getSearchPoints(page) {
         const dashboardData = await this.getDashboardData(undefined, page); // Always fetch newest data
-        return dashboardData.dashboard.userStatus.counters;
+        return dashboardData?.dashboard?.userStatus?.counters ?? {};
     }
     missingSearchPoints(counters, isMobile) {
         const mobileData = counters.mobileSearch?.[0];
@@ -185,11 +185,11 @@ class BrowserFunc {
     async getBrowserEarnablePoints() {
         try {
             const data = await this.getDashboardData();
-            const desktopSearchPoints = data.dashboard.userStatus.counters.pcSearch?.reduce((sum, x) => sum + (x.pointProgressMax - x.pointProgress), 0) ?? 0;
-            const mobileSearchPoints = data.dashboard.userStatus.counters.mobileSearch?.reduce((sum, x) => sum + (x.pointProgressMax - x.pointProgress), 0) ?? 0;
+            const desktopSearchPoints = data?.dashboard?.userStatus?.counters?.pcSearch?.reduce((sum, x) => sum + (x.pointProgressMax - x.pointProgress), 0) ?? 0;
+            const mobileSearchPoints = data?.dashboard?.userStatus?.counters?.mobileSearch?.reduce((sum, x) => sum + (x.pointProgressMax - x.pointProgress), 0) ?? 0;
             const todayDate = this.bot.utils.getFormattedDate();
-            const dailySetPoints = data.dashboard.dailySetPromotions[todayDate]?.reduce((sum, x) => sum + (x.pointProgressMax - x.pointProgress), 0) ?? 0;
-            const morePromotionsPoints = data.dashboard.morePromotions?.reduce((sum, x) => {
+            const dailySetPoints = data?.dashboard?.dailySetPromotions?.[todayDate]?.reduce((sum, x) => sum + (x.pointProgressMax - x.pointProgress), 0) ?? 0;
+            const morePromotionsPoints = data?.dashboard?.morePromotions?.reduce((sum, x) => {
                 if (x.promotionType === 'urlreward' && x.exclusiveLockedFeatureStatus !== 'locked') {
                     return sum + (x.pointProgressMax - x.pointProgress);
                 }
@@ -260,7 +260,7 @@ class BrowserFunc {
     async getCurrentPoints() {
         try {
             const data = await this.getDashboardData();
-            return data.dashboard.userStatus.availablePoints;
+            return data?.dashboard?.userStatus?.availablePoints ?? 0;
         }
         catch (error) {
             this.bot.logger.error(this.bot.isMobile, 'GET-CURRENT-POINTS', `An error occurred: ${error instanceof Error ? error.message : String(error)}`);
@@ -269,7 +269,7 @@ class BrowserFunc {
     }
     async getReadyToClaimPoints() {
         const data = await this.getDashboardData();
-        const rawClaimable = data.dashboard.pointClaimBannerPromotion?.attributes?.claimable_points;
+        const rawClaimable = data?.dashboard?.pointClaimBannerPromotion?.attributes?.claimable_points;
         if (rawClaimable == null || String(rawClaimable).trim() === '')
             return null;
         const claimable = Number(rawClaimable);

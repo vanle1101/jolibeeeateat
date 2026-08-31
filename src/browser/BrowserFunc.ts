@@ -209,7 +209,7 @@ export default class BrowserFunc {
     async getSearchPoints(page?: Page): Promise<Counters> {
         const dashboardData = await this.getDashboardData(undefined, page) // Always fetch newest data
 
-        return dashboardData.dashboard.userStatus.counters
+        return dashboardData?.dashboard?.userStatus?.counters ?? ({} as Counters)
     }
 
     missingSearchPoints(counters: Counters, isMobile: boolean): MissingSearchPoints {
@@ -231,14 +231,14 @@ export default class BrowserFunc {
             const data = await this.getDashboardData()
 
             const desktopSearchPoints =
-                data.dashboard.userStatus.counters.pcSearch?.reduce(
+                data?.dashboard?.userStatus?.counters?.pcSearch?.reduce(
                     (sum: number, x: { pointProgressMax: number; pointProgress: number }) =>
                         sum + (x.pointProgressMax - x.pointProgress),
                     0
                 ) ?? 0
 
             const mobileSearchPoints =
-                data.dashboard.userStatus.counters.mobileSearch?.reduce(
+                data?.dashboard?.userStatus?.counters?.mobileSearch?.reduce(
                     (sum: number, x: { pointProgressMax: number; pointProgress: number }) =>
                         sum + (x.pointProgressMax - x.pointProgress),
                     0
@@ -246,14 +246,14 @@ export default class BrowserFunc {
 
             const todayDate = this.bot.utils.getFormattedDate()
             const dailySetPoints =
-                data.dashboard.dailySetPromotions[todayDate]?.reduce(
+                data?.dashboard?.dailySetPromotions?.[todayDate]?.reduce(
                     (sum: number, x: { pointProgressMax: number; pointProgress: number }) =>
                         sum + (x.pointProgressMax - x.pointProgress),
                     0
                 ) ?? 0
 
             const morePromotionsPoints =
-                data.dashboard.morePromotions?.reduce((sum, x) => {
+                data?.dashboard?.morePromotions?.reduce((sum, x) => {
                     if (x.promotionType === 'urlreward' && x.exclusiveLockedFeatureStatus !== 'locked') {
                         return sum + (x.pointProgressMax - x.pointProgress)
                     }
@@ -344,7 +344,7 @@ export default class BrowserFunc {
         try {
             const data = await this.getDashboardData()
 
-            return data.dashboard.userStatus.availablePoints
+            return data?.dashboard?.userStatus?.availablePoints ?? 0
         } catch (error) {
             this.bot.logger.error(
                 this.bot.isMobile,
@@ -357,7 +357,7 @@ export default class BrowserFunc {
 
     async getReadyToClaimPoints(): Promise<number | null> {
         const data = await this.getDashboardData()
-        const rawClaimable = data.dashboard.pointClaimBannerPromotion?.attributes?.claimable_points
+        const rawClaimable = data?.dashboard?.pointClaimBannerPromotion?.attributes?.claimable_points
         if (rawClaimable == null || String(rawClaimable).trim() === '') return null
 
         const claimable = Number(rawClaimable)

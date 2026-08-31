@@ -547,8 +547,8 @@ class MicrosoftRewardsBot {
                 // timezoneOffset from it (covers 'auto' accounts whose country was
                 // only revealed by the dashboard).
                 this.userData.timezoneOffset = this.accountTimezoneOffset(account, this.userData.geoLocale);
-                this.userData.initialPoints = data.dashboard.userStatus.availablePoints;
-                this.userData.currentPoints = data.dashboard.userStatus.availablePoints;
+                this.userData.initialPoints = data?.dashboard?.userStatus?.availablePoints ?? 0;
+                this.userData.currentPoints = data?.dashboard?.userStatus?.availablePoints ?? 0;
                 const initialPoints = this.userData.initialPoints ?? 0;
                 // Drain rewards that were already waiting before this run. A
                 // second pass after all activities catches rewards that become

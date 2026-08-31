@@ -143,9 +143,9 @@ export class SearchOnBing extends Workers {
 
                 await this.bot.utils.wait(this.bot.utils.randomDelay(5000, 7000))
 
-                const dashboard = (await this.bot.browser.func.getDashboardData()).dashboard
-                const newBalance = dashboard.userStatus.availablePoints
-                const offer = this.findOffer(dashboard, offerId)
+                const dashboard = (await this.bot.browser.func.getDashboardData())?.dashboard
+                const newBalance = dashboard?.userStatus?.availablePoints ?? lastBalance
+                const offer = dashboard ? this.findOffer(dashboard, offerId) : null
 
                 const delta = newBalance - lastBalance
                 if (delta > 0) {
