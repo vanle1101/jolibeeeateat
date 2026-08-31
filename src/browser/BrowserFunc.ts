@@ -125,9 +125,10 @@ export default class BrowserFunc {
             }
             throw new Error('Dashboard data missing from API response')
         } catch (error) {
-            if (page && !page.isClosed()) {
+            const fallbackPage = page ?? this.getActiveRewardsPage()
+            if (fallbackPage && !fallbackPage.isClosed()) {
                 try {
-                    const data = await this.getDashboardDataFromBrowser(page, request)
+                    const data = await this.getDashboardDataFromBrowser(fallbackPage, request)
                     this.bot.logger.warn(
                         this.bot.isMobile,
                         'GET-DASHBOARD-DATA',
