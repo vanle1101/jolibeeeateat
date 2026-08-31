@@ -1,34 +1,31 @@
+﻿import fs from 'fs';
 
-import fs from 'fs';
-
-async function generateImage(prompt, filename) {
-    console.log('�ang t?o ?nh v?i Prompt:', prompt);
-    console.log('Vui l�ng d?i v�i gi�y...');
+async function generateImage(prompt, filename = 'generated-image.jpg') {
+    console.log('Đang tạo ảnh với Prompt:', prompt);
+    console.log('Vui lòng đợi vài giây...');
     
     try {
-        // Pollinations URL: encode the prompt text safely
         const encodedPrompt = encodeURIComponent(prompt);
-        // Th�m tham s? model=flux (ho?c x�a di d? d�ng m?c d?nh), nologo=true d? b? watermark
-        const url = \https://image.pollinations.ai/prompt/\?width=1024&height=1024&nologo=true\;
+        const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
         
         const response = await fetch(url);
         
         if (!response.ok) {
-            throw new Error('L?i khi g?i API: ' + response.statusText);
+            throw new Error('Lỗi khi gọi API: ' + response.statusText);
         }
         
         const buffer = await response.arrayBuffer();
         fs.writeFileSync(filename, Buffer.from(buffer));
         
-        console.log('? �� t?o ?nh th�nh c�ng v� luu t?i:', filename);
+        console.log('✅ Đã tạo ảnh thành công và lưu tại:', filename);
+        return filename;
     } catch (error) {
-        console.error('? L?i t?o ?nh:', error.message);
+        console.error('❌ Lỗi tạo ảnh:', error.message);
+        throw error;
     }
 }
 
-// Ch?y th? v?i m?t c�u l?nh
-const prompt = 'a cute cybernetic cat hacking on a laptop, futuristic neon city background, 8k resolution, highly detailed';
+const promptArg = process.argv.slice(2).join(' ') || 'a cute cybernetic cat hacking on a laptop, futuristic neon city background, 8k resolution, highly detailed';
 const outputFile = 'my-generated-image.jpg';
 
-generateImage(prompt, outputFile);
-
+generateImage(promptArg, outputFile);
