@@ -4,6 +4,8 @@ exports.ActivateSearchPerk = void 0;
 exports.detectSearchMultiplierPerk = detectSearchMultiplierPerk;
 const Workers_1 = require("../../Workers");
 function detectSearchMultiplierPerk(dashboard) {
+    if (!dashboard)
+        return null;
     const candidates = [dashboard.promotionalItem, ...(dashboard.promotionalItems ?? [])];
     for (const item of candidates) {
         if (!item)

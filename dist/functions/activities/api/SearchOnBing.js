@@ -145,21 +145,25 @@ class SearchOnBing extends Workers_1.Workers {
         this.bot.logger.warn(this.bot.isMobile, 'SEARCH-ON-BING-SEARCH', `Finished all queries without completing the activity | queriesTried=${queries.length} | offerId=${offerId} | pointsGained=${this.gainedPoints} | currentBalance=${this.bot.userData.currentPoints} | previousBalance=${this.oldBalance}`);
     }
     findOffer(dashboard, offerId) {
+        if (!dashboard || !offerId)
+            return undefined;
         const pools = [
-            ...Object.values(dashboard.dailySetPromotions ?? {}).flat(),
-            ...(dashboard.morePromotions ?? []),
-            ...(dashboard.promotionalItems ?? []),
-            ...(dashboard.promotionalItem ? [dashboard.promotionalItem] : [])
+            ...Object.values(dashboard?.dailySetPromotions ?? {}).flat(),
+            ...(dashboard?.morePromotions ?? []),
+            ...(dashboard?.promotionalItems ?? []),
+            ...(dashboard?.promotionalItem ? [dashboard.promotionalItem] : [])
         ];
-        return pools.find(o => o.offerId === offerId);
+        return pools.find(o => o?.offerId === offerId);
     }
     buildCategoryGroup(dashboard, targetOfferId) {
-        const pools = [
-            ...Object.values(dashboard.dailySetPromotions ?? {}).flat(),
-            ...(dashboard.morePromotions ?? []),
-            ...(dashboard.promotionalItems ?? []),
-            ...(dashboard.promotionalItem ? [dashboard.promotionalItem] : [])
-        ];
+        const pools = dashboard
+            ? [
+                ...Object.values(dashboard.dailySetPromotions ?? {}).flat(),
+                ...(dashboard.morePromotions ?? []),
+                ...(dashboard.promotionalItems ?? []),
+                ...(dashboard.promotionalItem ? [dashboard.promotionalItem] : [])
+            ]
+            : [];
         const categoryOf = (id) => {
             const m = id.match(/(?:^|_)([a-z0-9]+)_exploreonbing/i);
             return m?.[1]?.toLowerCase() ?? null;

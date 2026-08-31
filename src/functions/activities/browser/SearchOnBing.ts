@@ -230,14 +230,15 @@ export class SearchOnBing extends Workers {
         await page.waitForLoadState('domcontentloaded', { timeout: 8000 }).catch(() => {})
     }
 
-    private findOffer(dashboard: Dashboard, offerId: string) {
+    private findOffer(dashboard?: Dashboard, offerId?: string) {
+        if (!dashboard || !offerId) return undefined
         const pools = [
-            ...Object.values(dashboard.dailySetPromotions ?? {}).flat(),
-            ...(dashboard.morePromotions ?? []),
-            ...(dashboard.promotionalItems ?? []),
-            ...(dashboard.promotionalItem ? [dashboard.promotionalItem] : [])
+            ...Object.values(dashboard?.dailySetPromotions ?? {}).flat(),
+            ...(dashboard?.morePromotions ?? []),
+            ...(dashboard?.promotionalItems ?? []),
+            ...(dashboard?.promotionalItem ? [dashboard.promotionalItem] : [])
         ]
-        return pools.find(o => o.offerId === offerId)
+        return pools.find(o => o?.offerId === offerId)
     }
 
     private async getSearchQueries(promotion: BasePromotion): Promise<string[]> {

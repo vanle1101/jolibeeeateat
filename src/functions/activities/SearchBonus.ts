@@ -103,11 +103,12 @@ export class BonusTracker implements SearchTracker {
         return `progress=${this.current}/${this.max}`
     }
 
-    private findSearchBonusOffer(dashboard: Dashboard) {
+    private findSearchBonusOffer(dashboard?: Dashboard) {
+        if (!dashboard) return undefined
         const pools = [
-            ...(dashboard.morePromotions ?? []),
-            ...(dashboard.morePromotionsWithoutPromotionalItems ?? []),
-            ...(dashboard.promotionalItems ?? [])
+            ...(dashboard?.morePromotions ?? []),
+            ...(dashboard?.morePromotionsWithoutPromotionalItems ?? []),
+            ...(dashboard?.promotionalItems ?? [])
         ]
 
         return pools.find(p => {
@@ -118,14 +119,15 @@ export class BonusTracker implements SearchTracker {
         })
     }
 
-    private findOfferById(dashboard: Dashboard, offerId: string) {
+    private findOfferById(dashboard?: Dashboard, offerId?: string) {
+        if (!dashboard || !offerId) return undefined
         const pools = [
-            ...Object.values(dashboard.dailySetPromotions ?? {}).flat(),
-            ...(dashboard.morePromotions ?? []),
-            ...(dashboard.morePromotionsWithoutPromotionalItems ?? []),
-            ...(dashboard.promotionalItems ?? [])
+            ...Object.values(dashboard?.dailySetPromotions ?? {}).flat(),
+            ...(dashboard?.morePromotions ?? []),
+            ...(dashboard?.morePromotionsWithoutPromotionalItems ?? []),
+            ...(dashboard?.promotionalItems ?? [])
         ]
-        return pools.find(o => o.offerId === offerId)
+        return pools.find(o => o?.offerId === offerId)
     }
 
     private isBareBingSearchDestination(url?: string): boolean {

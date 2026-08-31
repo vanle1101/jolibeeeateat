@@ -81,10 +81,12 @@ class BonusTracker {
         return `progress=${this.current}/${this.max}`;
     }
     findSearchBonusOffer(dashboard) {
+        if (!dashboard)
+            return undefined;
         const pools = [
-            ...(dashboard.morePromotions ?? []),
-            ...(dashboard.morePromotionsWithoutPromotionalItems ?? []),
-            ...(dashboard.promotionalItems ?? [])
+            ...(dashboard?.morePromotions ?? []),
+            ...(dashboard?.morePromotionsWithoutPromotionalItems ?? []),
+            ...(dashboard?.promotionalItems ?? [])
         ];
         return pools.find(p => {
             if (!p || p.complete)
@@ -97,13 +99,15 @@ class BonusTracker {
         });
     }
     findOfferById(dashboard, offerId) {
+        if (!dashboard || !offerId)
+            return undefined;
         const pools = [
-            ...Object.values(dashboard.dailySetPromotions ?? {}).flat(),
-            ...(dashboard.morePromotions ?? []),
-            ...(dashboard.morePromotionsWithoutPromotionalItems ?? []),
-            ...(dashboard.promotionalItems ?? [])
+            ...Object.values(dashboard?.dailySetPromotions ?? {}).flat(),
+            ...(dashboard?.morePromotions ?? []),
+            ...(dashboard?.morePromotionsWithoutPromotionalItems ?? []),
+            ...(dashboard?.promotionalItems ?? [])
         ];
-        return pools.find(o => o.offerId === offerId);
+        return pools.find(o => o?.offerId === offerId);
     }
     isBareBingSearchDestination(url) {
         if (!url)

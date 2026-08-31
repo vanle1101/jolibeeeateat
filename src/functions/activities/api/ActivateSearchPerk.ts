@@ -6,7 +6,8 @@ export interface SearchMultiplierPerk {
     multiplier: number
 }
 
-export function detectSearchMultiplierPerk(dashboard: Dashboard): SearchMultiplierPerk | null {
+export function detectSearchMultiplierPerk(dashboard?: Dashboard): SearchMultiplierPerk | null {
+    if (!dashboard) return null
     const candidates = [dashboard.promotionalItem, ...(dashboard.promotionalItems ?? [])]
 
     for (const item of candidates) {

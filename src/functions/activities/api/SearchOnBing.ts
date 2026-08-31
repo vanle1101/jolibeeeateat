@@ -200,23 +200,26 @@ export class SearchOnBing extends Workers {
         )
     }
 
-    private findOffer(dashboard: Dashboard, offerId: string) {
+    private findOffer(dashboard?: Dashboard, offerId?: string) {
+        if (!dashboard || !offerId) return undefined
         const pools = [
-            ...Object.values(dashboard.dailySetPromotions ?? {}).flat(),
-            ...(dashboard.morePromotions ?? []),
-            ...(dashboard.promotionalItems ?? []),
-            ...(dashboard.promotionalItem ? [dashboard.promotionalItem] : [])
+            ...Object.values(dashboard?.dailySetPromotions ?? {}).flat(),
+            ...(dashboard?.morePromotions ?? []),
+            ...(dashboard?.promotionalItems ?? []),
+            ...(dashboard?.promotionalItem ? [dashboard.promotionalItem] : [])
         ]
-        return pools.find(o => o.offerId === offerId)
+        return pools.find(o => o?.offerId === offerId)
     }
 
-    private buildCategoryGroup(dashboard: Dashboard, targetOfferId: string): string {
-        const pools = [
-            ...Object.values(dashboard.dailySetPromotions ?? {}).flat(),
-            ...(dashboard.morePromotions ?? []),
-            ...(dashboard.promotionalItems ?? []),
-            ...(dashboard.promotionalItem ? [dashboard.promotionalItem] : [])
-        ]
+    private buildCategoryGroup(dashboard: Dashboard | undefined, targetOfferId: string): string {
+        const pools = dashboard
+            ? [
+                  ...Object.values(dashboard.dailySetPromotions ?? {}).flat(),
+                  ...(dashboard.morePromotions ?? []),
+                  ...(dashboard.promotionalItems ?? []),
+                  ...(dashboard.promotionalItem ? [dashboard.promotionalItem] : [])
+              ]
+            : []
         const categoryOf = (id: string): string | null => {
             const m = id.match(/(?:^|_)([a-z0-9]+)_exploreonbing/i)
             return m?.[1]?.toLowerCase() ?? null

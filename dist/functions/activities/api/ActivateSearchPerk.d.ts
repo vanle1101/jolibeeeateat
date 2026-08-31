@@ -4,7 +4,7 @@ export interface SearchMultiplierPerk {
     offerId: string;
     multiplier: number;
 }
-export declare function detectSearchMultiplierPerk(dashboard: Dashboard): SearchMultiplierPerk | null;
+export declare function detectSearchMultiplierPerk(dashboard?: Dashboard): SearchMultiplierPerk | null;
 export declare class ActivateSearchPerk extends Workers {
     activate(data: DashboardData): Promise<void>;
 }

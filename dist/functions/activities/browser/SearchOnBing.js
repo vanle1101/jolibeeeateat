@@ -174,13 +174,15 @@ class SearchOnBing extends Workers_1.Workers {
         await page.waitForLoadState('domcontentloaded', { timeout: 8000 }).catch(() => { });
     }
     findOffer(dashboard, offerId) {
+        if (!dashboard || !offerId)
+            return undefined;
         const pools = [
-            ...Object.values(dashboard.dailySetPromotions ?? {}).flat(),
-            ...(dashboard.morePromotions ?? []),
-            ...(dashboard.promotionalItems ?? []),
-            ...(dashboard.promotionalItem ? [dashboard.promotionalItem] : [])
+            ...Object.values(dashboard?.dailySetPromotions ?? {}).flat(),
+            ...(dashboard?.morePromotions ?? []),
+            ...(dashboard?.promotionalItems ?? []),
+            ...(dashboard?.promotionalItem ? [dashboard.promotionalItem] : [])
         ];
-        return pools.find(o => o.offerId === offerId);
+        return pools.find(o => o?.offerId === offerId);
     }
     async getSearchQueries(promotion) {
         try {
