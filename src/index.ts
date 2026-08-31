@@ -643,15 +643,15 @@ export class MicrosoftRewardsBot {
                 this.cookies.mobile = await session.context.cookies()
 
                 const data = await this.browser.func.getDashboardData(this.cookies.mobile)
-                const status = data.dashboard.userStatus
+                const status = data?.dashboard?.userStatus
 
                 return {
                     accountId: account.accountId ?? null,
                     email: accountEmail,
-                    points: status.availablePoints,
-                    lifetimePoints: status.lifetimePoints ?? null,
-                    lifetimePointsRedeemed: status.lifetimePointsRedeemed ?? null,
-                    country: data.dashboard.userProfile.attributes.country ?? null,
+                    points: status?.availablePoints ?? 0,
+                    lifetimePoints: status?.lifetimePoints ?? null,
+                    lifetimePointsRedeemed: status?.lifetimePointsRedeemed ?? null,
+                    country: data?.dashboard?.userProfile?.attributes?.country ?? null,
                     checkedAt: new Date().toISOString()
                 }
             })
