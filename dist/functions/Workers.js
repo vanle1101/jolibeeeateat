@@ -40,7 +40,7 @@ class Workers {
     }
     async doDailySet(data) {
         const todayKey = this.bot.utils.getFormattedDate();
-        const dailySets = data.dashboard.dailySetPromotions ?? {};
+        const dailySets = data?.dashboard?.dailySetPromotions ?? {};
         const todayIso = dateKey(todayKey);
         const todayData = dailySets[todayKey] ??
             (todayIso ? Object.entries(dailySets).find(([key]) => dateKey(key) === todayIso)?.[1] : undefined);
@@ -67,8 +67,8 @@ class Workers {
     async doMorePromotions(data) {
         const morePromotions = [
             ...new Map([
-                ...(data.dashboard.morePromotions ?? []),
-                ...(data.dashboard.morePromotionsWithoutPromotionalItems ?? [])
+                ...(data?.dashboard?.morePromotions ?? []),
+                ...(data?.dashboard?.morePromotionsWithoutPromotionalItems ?? [])
             ]
                 .filter(Boolean)
                 .map(p => [p.offerId, p])).values()
@@ -158,7 +158,7 @@ class Workers {
             this.bot.logger.warn(this.bot.isMobile, 'PUNCHCARD', `Failed fetching /earn for quest list | ${error instanceof Error ? error.message : String(error)}`);
             return;
         }
-        const apiById = new Map((data.dashboard.punchCards ?? [])
+        const apiById = new Map((data?.dashboard?.punchCards ?? [])
             .filter(c => c.parentPromotion?.offerId)
             .map(c => [c.parentPromotion.offerId, c]));
         const seen = new Set(parents.map(p => p.offerId));

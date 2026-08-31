@@ -49,7 +49,7 @@ export class Workers {
 
     public async doDailySet(data: DashboardData) {
         const todayKey = this.bot.utils.getFormattedDate()
-        const dailySets = data.dashboard.dailySetPromotions ?? {}
+        const dailySets = data?.dashboard?.dailySetPromotions ?? {}
         const todayIso = dateKey(todayKey)
         const todayData =
             dailySets[todayKey] ??
@@ -90,8 +90,8 @@ export class Workers {
         const morePromotions: BasePromotion[] = [
             ...new Map(
                 [
-                    ...(data.dashboard.morePromotions ?? []),
-                    ...(data.dashboard.morePromotionsWithoutPromotionalItems ?? [])
+                    ...(data?.dashboard?.morePromotions ?? []),
+                    ...(data?.dashboard?.morePromotionsWithoutPromotionalItems ?? [])
                 ]
                     .filter(Boolean)
                     .map(p => [p.offerId, p as BasePromotion] as const)
@@ -215,7 +215,7 @@ export class Workers {
         }
 
         const apiById = new Map(
-            (data.dashboard.punchCards ?? [])
+            (data?.dashboard?.punchCards ?? [])
                 .filter(c => c.parentPromotion?.offerId)
                 .map(c => [c.parentPromotion.offerId, c] as const)
         )
