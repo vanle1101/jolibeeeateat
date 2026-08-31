@@ -105,7 +105,7 @@ class BrowserFunc {
         };
         try {
             const response = await this.bot.http.request(request);
-            if (response.data) {
+            if (response.data && typeof response.data === 'object' && 'dashboard' in response.data) {
                 return response.data;
             }
             throw new Error('Dashboard data missing from API response');
