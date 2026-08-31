@@ -532,6 +532,14 @@ function bindEvents() {
   $("#deleteSelected").addEventListener("click", deleteSelected);
   $("#disableSelected").addEventListener("click", disableSelected);
   $("#clearLog").addEventListener("click", () => { $("#logOutput").textContent = "Chưa có log mới."; });
+  $("#copyLog").addEventListener("click", () => {
+    const text = $("#logOutput").textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = $("#copyLog");
+      btn.textContent = "Copied!";
+      setTimeout(() => btn.textContent = "Copy", 2000);
+    });
+  });
   $$('dialog').forEach((dialog) => dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); }));
 }
 
