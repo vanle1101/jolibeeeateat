@@ -21,7 +21,7 @@ if not exist "dist/index.js" (
 set API_HOST=0.0.0.0
 set API_PORT=3010
 echo [*] Dang khoi dong Backend API Server o cong 3010...
-start "Rewards API" /min cmd /c "set API_HOST=0.0.0.0&& npm run api"
+start "Rewards API" cmd /k "title Rewards API && set API_HOST=0.0.0.0&& npm run api"
 
 timeout /t 2 /nobreak >nul
 
