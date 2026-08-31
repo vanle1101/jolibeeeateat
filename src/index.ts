@@ -734,7 +734,7 @@ export class MicrosoftRewardsBot {
 
                 this.userData.geoLocale =
                     account.geoLocale === 'auto'
-                        ? data.dashboard.userProfile.attributes.country
+                        ? (data?.dashboard?.userProfile?.attributes?.country ?? 'us')
                         : account.geoLocale.toLowerCase()
                 if (this.userData.geoLocale.length > 2) {
                     this.logger.warn(
